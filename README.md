@@ -1,6 +1,6 @@
 # ⚡ Ball Battle: Wall Multiplier
 
-A chaotic browser battle simulator. Balls bounce around an arena, and **every wall hit makes them faster and hit harder**. Give each fighter a power, press Start, and watch who's left standing.
+A browser based battle simulator. Balls bounce around an arena, and **every wall hit makes them faster and hit harder**. Give each Ball a power, and watch who's left standing.
 
 ### [▶ Play it in your browser](https://doggieshrimp.github.io/Ball-battle/)
 
