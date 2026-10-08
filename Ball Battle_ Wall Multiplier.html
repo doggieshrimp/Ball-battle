@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ball Battle Sim</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #1a1d24;
+    --text: #e8e8ec;
+    --muted: #9a9fae;
+    --accent: #5eead4;
+    --border: #2a2e38;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  @media (prefers-color-scheme: light) {
+    :root:not([data-theme="dark"]) {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --text: #1a1d24;
+      --muted: #5b5f6b;
+      --accent: #0d9488;
+      --border: #dfe2e8;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    gap: 12px;
+  }
+  h1 {
+    font-size: 1.1rem;
+    margin: 0;
+    font-weight: 600;
+    color: var(--text);
+  }
+  .subtitle {
+    font-size: 0.85rem;
+    color: var(--muted);
+    margin: 0 0 4px 0;
+    text-align: center;
+    max-width: 480px;
+  }
+  #arenaWrap {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    aspect-ratio: 1 / 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  #roster {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
+    max-width: 560px;
+  }
+  .roster-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 5px 9px;
+    font-size: 0.75rem;
+    transition: opacity 0.2s ease;
+  }
+  .roster-item.dead {
+    opacity: 0.35;
+    text-decoration: line-through;
+  }
+  .roster-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .roster-name {
+    font-weight: 600;
+    color: var(--text);
+  }
+  .roster-hp {
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .roster-item input[type="text"],
+  .roster-item input[type="number"] {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 0.75rem;
+    font-family: inherit;
+    padding: 2px 5px;
+  }
+  .roster-item input[type="text"] {
+    width: 62px;
+    font-weight: 600;
+  }
+  .roster-item input[type="number"] {
+    width: 48px;
+  }
+  .roster-item input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .roster-item select {
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 0.75rem;
+    font-family: inherit;
+    padding: 2px 3px;
+  }
+  .roster-item select:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+  .power-badge {
+    font-size: 0.8rem;
+  }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    width: 100%;
+    max-width: 560px;
+  }
+  button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary {
+    background: var(--accent);
+    color: #06231f;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  input[type="range"] { accent-color: var(--accent); }
+  #status {
+    font-size: 0.85rem;
+    color: var(--muted);
+    min-height: 1.2em;
+    text-align: center;
+  }
+  #status strong { color: var(--accent); }
+</style>
+</head>
+<body>
+  <h1>⚡ Ball Battle: Wall Multiplier</h1>
+
+  <div id="arenaWrap">
+    <canvas id="arena"></canvas>
+  </div>
+
+  <div id="roster"></div>
+
+  <div id="status">Press Start to begin the battle</div>
+
+  <div class="controls">
+    <button class="primary" id="startBtn">Start</button>
+    <button id="resetBtn">Reset</button>
+    <button id="addBtn">+ Add Ball</button>
+  </div>
+
+  <div class="row">
+    <label for="ballCount">Balls:</label>
+    <input type="range" id="ballCount" min="2" max="10" value="5">
+    <span id="ballCountLabel">5</span>
+  </div>
+
+  <div class="row">
+    <label for="speedMult">Speed gain per wall hit (%):</label>
+    <input type="number" id="speedMult" min="0" max="100" step="0.5" value="4.5" style="width:64px;">
+  </div>
+
+  <div class="row">
+    <label for="damageMult">Damage multiplier per wall hit:</label>
+    <input type="number" id="damageMult" min="0" max="10" step="0.1" value="2" style="width:64px;">
+  </div>
+
+  <div class="row">
+    <label for="damageAdd">Flat damage gain per wall hit:</label>
+    <input type="number" id="damageAdd" min="0" max="100000" step="1" value="0" style="width:64px;">
+  </div>
+
+  <p class="subtitle" style="font-size:0.75rem;">Edit names &amp; starting HP below before pressing Start.</p>
+
+  <script>
+  (function() {
+    const canvas = document.getElementById('arena');
+    const ctx = canvas.getContext('2d');
+    const wrap = document.getElementById('arenaWrap');
+    const statusEl = document.getElementById('status');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const addBtn = document.getElementById('addBtn');
+    const ballCountSlider = document.getElementById('ballCount');
+    const ballCountLabel = document.getElementById('ballCountLabel');
+    const speedMultSlider = document.getElementById('speedMult');
+    const damageMultSlider = document.getElementById('damageMult');
+    const damageAddInput = document.getElementById('damageAdd');
+
+    let W, H, DPR;
+    function resize() {
+      DPR = window.devicePixelRatio || 1;
+      const rect = wrap.getBoundingClientRect();
+      W = rect.width;
+      H = rect.height;
+      canvas.width = W * DPR;
+      canvas.height = H * DPR;
+      ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    }
+    window.addEventListener('resize', resize);
+
+    const roster = document.getElementById('roster');
+
+    const COLORS = ['#f87171', '#60a5fa', '#facc15', '#4ade80', '#c084fc', '#fb923c', '#22d3ee', '#f472b6', '#a3e635', '#94a3b8'];
+    const NAMES = ['Rusty', 'Nova', 'Bolt', 'Zephyr', 'Ember', 'Onyx', 'Cosmo', 'Pixel', 'Flint', 'Vex'];
+    const POWERS = {
+      none:   { label: 'None',     emoji: '' },
+      fire:   { label: 'Fire',     emoji: '🔥' },
+      ice:    { label: 'Ice',      emoji: '❄️' },
+      shock:  { label: 'Shock',    emoji: '⚡' },
+      vamp:   { label: 'Vampire',  emoji: '🩸' },
+      rod:    { label: 'Rod',      emoji: '🌀' },
+      poison: { label: 'Poison',   emoji: '🧪' },
+      shield: { label: 'Shield',   emoji: '🛡️' },
+      blast:  { label: 'Blast',    emoji: '💥' },
+      regen:  { label: 'Regen',    emoji: '💚' }
+    };
+    const POWER_KEYS_RANDOM = ['fire', 'ice', 'shock', 'vamp', 'rod', 'poison', 'shield', 'blast', 'regen']; // excludes 'none' for random assignment
+
+    const ROD_BASE_LEN = 45;       // starting orbit radius
+    const ROD_BASE_SPEED = 0.06;   // starting angular speed (rad/frame)
+    const ROD_LEN_GROWTH = 1.015;  // orbit radius growth per wall hit (was 1.15, now ~10% of that growth rate)
+    const ROD_SPEED_GROWTH = 1.008; // angular speed growth per wall hit (was 1.08, now ~10% of that growth rate)
+    const ROD_MAX_SPEED = 0.4;     // angular speed cap
+    const ROD_TIP_R = 7;           // radius of the rod's hitting tip
+    const ROD_HIT_COOLDOWN = 18;   // frames a ball is immune after being hit by a rod
+
+    const POISON_TICK_INTERVAL = 25;   // frames between poison ticks
+    const POISON_MAX_TICKS = 20;       // cap on stacked poison duration
+    const POISON_STACK_ADD = 6;        // ticks added per poison hit
+    const SHIELD_REDUCTION = 0.5;      // fraction of damage blocked while shield is up
+    const SHIELD_COOLDOWN = 120;       // ~2s at 60fps before shield can block again
+    const BLAST_KNOCKBACK = 6;         // extra push applied along the collision normal
+    const REGEN_INTERVAL = 60;         // frames between regen ticks (~1s)
+    const REGEN_FRACTION = 0.001;      // fraction of max HP healed per regen tick
+
+    let balls = [];
+    let running = false;
+    let animId = null;
+
+    const INVULN_FRAMES = 24;      // ~0.4s at 60fps grace period after being hit
+    let WALL_SPEED_MULT = 1.045;   // speed boost per wall hit (editable)
+    let DAMAGE_MULT = 2;           // damage multiplier per wall hit (editable)
+    let DAMAGE_ADD = 0;            // flat damage added per wall hit (editable)
+    const MAX_SPEED = 11;          // speed cap so it doesn't spiral out of control
+
+    speedMultSlider.addEventListener('input', () => {
+      const pct = parseFloat(speedMultSlider.value);
+      if (!isNaN(pct) && pct >= 0) WALL_SPEED_MULT = 1 + pct / 100;
+    });
+
+    damageMultSlider.addEventListener('input', () => {
+      const val = parseFloat(damageMultSlider.value);
+      if (!isNaN(val) && val >= 0) DAMAGE_MULT = val;
+    });
+
+    damageAddInput.addEventListener('input', () => {
+      const val = parseFloat(damageAddInput.value);
+      DAMAGE_ADD = (!isNaN(val) && val >= 0) ? val : 0;
+    });
+
+    // editable per-ball settings, kept separate from live simulation state
+    let ballConfigs = [];
+    function ensureConfigs(n) {
+      for (let i = 0; i < n; i++) {
+        if (!ballConfigs[i]) {
+          ballConfigs[i] = { name: NAMES[i % NAMES.length], hp: 10000000, damage: 1, power: POWER_KEYS_RANDOM[i % POWER_KEYS_RANDOM.length] };
+        }
+      }
+      ballConfigs.length = n;
+    }
+
+    function makeBall(id) {
+      const r = 18;
+      const cfg = ballConfigs[id] || { name: NAMES[id % NAMES.length], hp: 10000000, damage: 1, power: 'none' };
+      const startHp = Math.max(1, Math.round(cfg.hp) || 10000000);
+      const startDamage = Math.max(0, cfg.damage !== undefined ? cfg.damage : 1);
+      return {
+        id,
+        x: r + Math.random() * (W - 2 * r),
+        y: r + Math.random() * (H - 2 * r),
+        vx: (Math.random() - 0.5) * 4.5,
+        vy: (Math.random() - 0.5) * 4.5,
+        r,
+        baseR: r,
+        hp: startHp,
+        maxHp: startHp,
+        damage: startDamage,
+        invuln: 0,
+        color: COLORS[id % COLORS.length],
+        name: cfg.name || NAMES[id % NAMES.length],
+        power: cfg.power || 'none',
+        // status effects inflicted by opponents' powers
+        burnTicks: 0, burnDmgPerTick: 0, burnTimer: 0,
+        slowFrames: 0,
+        stunFrames: 0,
+        poisonTicks: 0, poisonDmgPerTick: 0, poisonTimer: 0,
+        shieldCooldown: 0,
+        regenTimer: 0,
+        rodImmune: 0,
+        // rod power state (only used if power === 'rod')
+        rodAngle: Math.random() * Math.PI * 2,
+        rodLen: ROD_BASE_LEN,
+        rodSpeed: ROD_BASE_SPEED,
+        alive: true
+      };
+    }
+
+    // reset a ball's rod to base stats (call when it's newly assigned the rod power)
+    function initRod(ball) {
+      ball.rodAngle = Math.random() * Math.PI * 2;
+      ball.rodLen = ROD_BASE_LEN;
+      ball.rodSpeed = ROD_BASE_SPEED;
+    }
+
+    function initBalls() {
+      const n = parseInt(ballCountSlider.value, 10);
+      ensureConfigs(n);
+      balls = [];
+      for (let i = 0; i < n; i++) balls.push(makeBall(i));
+      running = false;
+      statusEl.innerHTML = 'Press Start to begin the battle';
+      draw();
+    }
+
+    ballCountSlider.addEventListener('input', () => {
+      ballCountLabel.textContent = ballCountSlider.value;
+      if (!running) initBalls();
+    });
+
+    addBtn.addEventListener('click', () => {
+      if (running) return;
+      if (balls.length >= 10) return;
+      ensureConfigs(balls.length + 1);
+      balls.push(makeBall(balls.length));
+      ballCountSlider.value = balls.length;
+      ballCountLabel.textContent = balls.length;
+      draw();
+    });
+
+    // attacker's power triggers an effect on defender. dmgDealt = damage attacker just dealt (for vampire lifesteal)
+    // Note: each effect can only be freshly applied if the defender isn't already under it —
+    // this stops repeated hits from perpetually renewing (and effectively permalocking) an effect.
+    function applyPower(attacker, defender, dmgDealt) {
+      switch (attacker.power) {
+        case 'fire':
+          if (defender.burnTicks <= 0) {
+            defender.burnTicks = 4;
+            defender.burnDmgPerTick = Math.max(1, Math.round(attacker.damage * 0.15));
+            defender.burnTimer = 0;
+          }
+          break;
+        case 'ice':
+          if (defender.slowFrames <= 0) {
+            defender.slowFrames = 90; // ~1.5s at 60fps
+          }
+          break;
+        case 'shock':
+          if (defender.stunFrames <= 0) {
+            defender.stunFrames = 30; // ~0.5s at 60fps
+          }
+          break;
+        case 'vamp':
+          attacker.hp = Math.min(attacker.maxHp, attacker.hp + Math.round(dmgDealt * 0.3));
+          break;
+        case 'poison':
+          // stacks duration rather than resetting it, up to a cap — a persistent, low, unrefreshed drain
+          defender.poisonTicks = Math.min(POISON_MAX_TICKS, defender.poisonTicks + POISON_STACK_ADD);
+          defender.poisonDmgPerTick = Math.max(1, Math.round(defender.maxHp * 0.004));
+          break;
+        // 'shield' and 'blast' are handled inline in the collision loop since they need
+        // directional/defensive context that this attacker->defender function doesn't have
+        default:
+          break; // 'none', 'shield', 'blast', 'regen'
+      }
+    }
+
+    function step() {
+      const alive = balls.filter(b => b.alive);
+
+      for (const b of alive) {
+        // stun: skip movement entirely
+        if (b.stunFrames > 0) {
+          b.stunFrames--;
+        } else {
+          const slowFactor = b.slowFrames > 0 ? 0.4 : 1;
+          b.x += b.vx * slowFactor;
+          b.y += b.vy * slowFactor;
+        }
+        if (b.slowFrames > 0) b.slowFrames--;
+        if (b.invuln > 0) b.invuln--;
+
+        // burn damage-over-time
+        if (b.burnTicks > 0) {
+          b.burnTimer++;
+          if (b.burnTimer >= 20) {
+            b.burnTimer = 0;
+            b.burnTicks--;
+            b.hp -= b.burnDmgPerTick;
+            if (b.hp <= 0) b.alive = false;
+          }
+        }
+
+        // poison damage-over-time (separate track from burn, stacks instead of refreshing)
+        if (b.poisonTicks > 0) {
+          b.poisonTimer++;
+          if (b.poisonTimer >= POISON_TICK_INTERVAL) {
+            b.poisonTimer = 0;
+            b.poisonTicks--;
+            b.hp -= b.poisonDmgPerTick;
+            if (b.hp <= 0) b.alive = false;
+          }
+        }
+
+        // regen: slow passive healing, independent of combat
+        if (b.power === 'regen' && b.hp > 0 && b.hp < b.maxHp) {
+          b.regenTimer++;
+          if (b.regenTimer >= REGEN_INTERVAL) {
+            b.regenTimer = 0;
+            b.hp = Math.min(b.maxHp, b.hp + Math.max(1, Math.round(b.maxHp * REGEN_FRACTION)));
+          }
+        }
+
+        if (b.shieldCooldown > 0) b.shieldCooldown--;
+        if (!b.alive) continue;
+
+        // wall collisions -> damage doubles + speed boost
+        let hitWall = false;
+        if (b.x - b.r < 0) { b.x = b.r; b.vx *= -1; hitWall = true; }
+        if (b.x + b.r > W) { b.x = W - b.r; b.vx *= -1; hitWall = true; }
+        if (b.y - b.r < 0) { b.y = b.r; b.vy *= -1; hitWall = true; }
+        if (b.y + b.r > H) { b.y = H - b.r; b.vy *= -1; hitWall = true; }
+
+        if (hitWall) {
+          const effectiveMult = Math.max(DAMAGE_MULT, 1); // below 1 acts as neutral so flat damage always accumulates
+          b.damage = b.damage * effectiveMult + DAMAGE_ADD;
+          b.r = Math.min(b.baseR * 1.9, b.baseR + Math.log2(Math.max(b.damage, 1)) * 2.2);
+
+          const speed = Math.hypot(b.vx, b.vy);
+          const boosted = Math.min(speed * WALL_SPEED_MULT, MAX_SPEED);
+          const scale = boosted / speed;
+          b.vx *= scale;
+          b.vy *= scale;
+
+          if (b.power === 'rod') {
+            const maxLen = Math.min(W, H) * 0.42;
+            b.rodLen = Math.min(b.rodLen * ROD_LEN_GROWTH, maxLen);
+            b.rodSpeed = Math.min(b.rodSpeed * ROD_SPEED_GROWTH, ROD_MAX_SPEED);
+          }
+        }
+
+        // spin the rod every frame, regardless of wall hits
+        if (b.power === 'rod') {
+          b.rodAngle += b.rodSpeed;
+        }
+        if (b.rodImmune > 0) b.rodImmune--;
+      }
+
+      // ball-ball collisions
+      for (let i = 0; i < alive.length; i++) {
+        for (let j = i + 1; j < alive.length; j++) {
+          const a = alive[i], c = alive[j];
+          if (!a.alive || !c.alive) continue;
+          const dx = c.x - a.x, dy = c.y - a.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = a.r + c.r;
+          if (dist < minDist && dist > 0) {
+            // separate
+            const overlap = (minDist - dist) / 2;
+            const nx = dx / dist, ny = dy / dist;
+            a.x -= nx * overlap; a.y -= ny * overlap;
+            c.x += nx * overlap; c.y += ny * overlap;
+
+            // elastic-ish bounce: swap velocity components along normal
+            const avn = a.vx * nx + a.vy * ny;
+            const cvn = c.vx * nx + c.vy * ny;
+            a.vx += (cvn - avn) * nx; a.vy += (cvn - avn) * ny;
+            c.vx += (avn - cvn) * nx; c.vy += (avn - cvn) * ny;
+
+            // exchange damage 1:1 with damage stat, only if not still invulnerable
+            if (a.invuln <= 0 && c.invuln <= 0) {
+              let dmgToC = a.damage;
+              let dmgToA = c.damage;
+
+              // shield: reduces incoming damage while off cooldown, then goes on cooldown
+              if (a.power === 'shield' && a.shieldCooldown <= 0) {
+                dmgToA *= (1 - SHIELD_REDUCTION);
+                a.shieldCooldown = SHIELD_COOLDOWN;
+              }
+              if (c.power === 'shield' && c.shieldCooldown <= 0) {
+                dmgToC *= (1 - SHIELD_REDUCTION);
+                c.shieldCooldown = SHIELD_COOLDOWN;
+              }
+
+              a.hp -= dmgToA;
+              c.hp -= dmgToC;
+              a.invuln = INVULN_FRAMES;
+              c.invuln = INVULN_FRAMES;
+
+              // apply each ball's power to the OTHER ball
+              applyPower(a, c, dmgToC);
+              applyPower(c, a, dmgToA);
+
+              // blast: extra knockback along the collision normal, on top of the normal bounce
+              if (a.power === 'blast') {
+                c.vx += nx * BLAST_KNOCKBACK;
+                c.vy += ny * BLAST_KNOCKBACK;
+              }
+              if (c.power === 'blast') {
+                a.vx -= nx * BLAST_KNOCKBACK;
+                a.vy -= ny * BLAST_KNOCKBACK;
+              }
+
+              if (a.hp <= 0) a.alive = false;
+              if (c.hp <= 0) c.alive = false;
+            }
+          }
+        }
+      }
+
+      // rod power: check each rod owner's spinning tip against every other alive ball
+      for (const owner of alive) {
+        if (owner.power !== 'rod') continue;
+        const tipX = owner.x + Math.cos(owner.rodAngle) * owner.rodLen;
+        const tipY = owner.y + Math.sin(owner.rodAngle) * owner.rodLen;
+        for (const target of alive) {
+          if (target === owner || !target.alive) continue;
+          const dx = target.x - tipX, dy = target.y - tipY;
+          const dist = Math.hypot(dx, dy);
+          if (dist < target.r + ROD_TIP_R && target.rodImmune <= 0) {
+            target.hp -= owner.damage;
+            target.rodImmune = ROD_HIT_COOLDOWN;
+            // light knockback so targets don't just sit inside the spinning rod
+            if (dist > 0) {
+              target.vx += (dx / dist) * 1.5;
+              target.vy += (dy / dist) * 1.5;
+            }
+            if (target.hp <= 0) target.alive = false;
+          }
+        }
+      }
+
+      const stillAlive = balls.filter(b => b.alive);
+      if (stillAlive.length <= 1 && running) {
+        running = false;
+        if (stillAlive.length === 1) {
+          statusEl.innerHTML = `🏆 Winner: <strong style="color:${stillAlive[0].color}">${stillAlive[0].name}</strong> (final damage: ${Math.round(stillAlive[0].damage)})`;
+        } else {
+          statusEl.textContent = 'Double knockout — no survivors!';
+        }
+        startBtn.textContent = 'Start';
+      }
+    }
+
+    function renderRoster() {
+      if (!running && balls.every(b => b.hp === b.maxHp)) {
+        // pre-battle: editable name + starting HP + power
+        roster.innerHTML = balls.map((b, i) => `
+          <div class="roster-item">
+            <span class="roster-dot" style="background:${b.color}"></span>
+            <input type="text" maxlength="12" value="${b.name}" data-idx="${i}" data-field="name">
+            <input type="number" min="1" max="99999999" value="${Math.round(b.hp)}" data-idx="${i}" data-field="hp"> HP
+            <input type="number" min="0" max="99999999" value="${Math.round(b.damage)}" data-idx="${i}" data-field="damage"> DMG
+            <select data-idx="${i}" data-field="power">
+              ${Object.entries(POWERS).map(([key, p]) => `<option value="${key}" ${b.power === key ? 'selected' : ''}>${p.emoji ? p.emoji + ' ' : ''}${p.label}</option>`).join('')}
+            </select>
+          </div>
+        `).join('');
+
+        roster.querySelectorAll('input, select').forEach(inp => {
+          inp.addEventListener('input', () => {
+            const idx = parseInt(inp.dataset.idx, 10);
+            const field = inp.dataset.field;
+            ensureConfigs(balls.length);
+            if (field === 'name') {
+              ballConfigs[idx].name = inp.value || NAMES[idx % NAMES.length];
+              balls[idx].name = ballConfigs[idx].name;
+            } else if (field === 'power') {
+              ballConfigs[idx].power = inp.value;
+              balls[idx].power = inp.value;
+              if (inp.value === 'rod') initRod(balls[idx]);
+            } else if (field === 'damage') {
+              const val = Math.max(0, parseFloat(inp.value) || 0);
+              ballConfigs[idx].damage = val;
+              balls[idx].damage = val;
+            } else {
+              const val = Math.max(1, parseInt(inp.value, 10) || 10000000);
+              ballConfigs[idx].hp = val;
+              balls[idx].hp = val;
+              balls[idx].maxHp = val;
+            }
+          });
+        });
+      } else {
+        // during/after battle: read-only live status
+        roster.innerHTML = balls.map(b => `
+          <div class="roster-item${b.alive ? '' : ' dead'}">
+            <span class="roster-dot" style="background:${b.color}"></span>
+            <span class="roster-name">${b.name}</span>
+            <span class="power-badge">${POWERS[b.power]?.emoji || ''}</span>
+            <span class="roster-hp">${Math.max(0, Math.round(b.hp))} HP</span>
+            <span class="roster-hp">${Math.round(b.damage)} DMG</span>
+          </div>
+        `).join('');
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      for (const b of balls) {
+        if (!b.alive) continue;
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        ctx.globalAlpha = b.invuln > 0 ? 0.55 + 0.25 * Math.sin(b.invuln) : 1;
+        ctx.fillStyle = b.color;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+
+        // HP ring
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r + 4, -Math.PI / 2, -Math.PI / 2 + (Math.max(b.hp, 0) / b.maxHp) * Math.PI * 2);
+        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // damage label
+        ctx.fillStyle = '#111';
+        ctx.font = 'bold 11px -apple-system, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(b.damage >= 1000 ? Math.round(b.damage/1000)+'k' : Math.round(b.damage), b.x, b.y);
+
+        // power badge (top-right of ball)
+        const powerEmoji = POWERS[b.power]?.emoji;
+        if (powerEmoji && b.power !== 'rod') {
+          ctx.font = `${Math.round(b.r * 0.7)}px sans-serif`;
+          ctx.fillText(powerEmoji, b.x + b.r * 0.75, b.y - b.r * 0.75);
+        }
+
+        // rod: draw the spinning arm + tip
+        if (b.power === 'rod') {
+          const tipX = b.x + Math.cos(b.rodAngle) * b.rodLen;
+          const tipY = b.y + Math.sin(b.rodAngle) * b.rodLen;
+          ctx.beginPath();
+          ctx.moveTo(b.x, b.y);
+          ctx.lineTo(tipX, tipY);
+          ctx.strokeStyle = b.color;
+          ctx.lineWidth = 3;
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.arc(tipX, tipY, ROD_TIP_R, 0, Math.PI * 2);
+          ctx.fillStyle = b.color;
+          ctx.fill();
+          ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+
+        // active status-effect icon (bottom, below ball)
+        let statusEmoji = '';
+        if (b.stunFrames > 0) statusEmoji = '⚡';
+        else if (b.burnTicks > 0) statusEmoji = '🔥';
+        else if (b.poisonTicks > 0) statusEmoji = '🧪';
+        else if (b.slowFrames > 0) statusEmoji = '❄️';
+        if (statusEmoji) {
+          ctx.font = `${Math.round(b.r * 0.65)}px sans-serif`;
+          ctx.fillText(statusEmoji, b.x, b.y + b.r + 12);
+        }
+      }
+      renderRoster();
+    }
+
+    function loop() {
+      if (running) {
+        step();
+        draw();
+        animId = requestAnimationFrame(loop);
+      }
+    }
+
+    startBtn.addEventListener('click', () => {
+      if (running) {
+        running = false;
+        startBtn.textContent = 'Start';
+        cancelAnimationFrame(animId);
+      } else {
+        const alive = balls.filter(b => b.alive);
+        if (alive.length <= 1) initBalls();
+        running = true;
+        startBtn.textContent = 'Pause';
+        statusEl.textContent = 'Battle in progress…';
+        loop();
+      }
+    });
+
+    resetBtn.addEventListener('click', () => {
+      running = false;
+      cancelAnimationFrame(animId);
+      startBtn.textContent = 'Start';
+      initBalls();
+    });
+
+    // init
+    resize();
+    initBalls();
+    window.addEventListener('resize', () => { resize(); draw(); });
+  })();
+  </script>
+</body>
+</html>
