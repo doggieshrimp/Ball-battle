@@ -35,11 +35,140 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   }
   body {
+    padding: 16px;
+  }
+  [hidden] { display: none !important; }
+  .screen {
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 16px;
     gap: 12px;
+  }
+
+  /* ---------- main menu ---------- */
+  #menu {
+    min-height: calc(100vh - 32px);
+    justify-content: center;
+  }
+  #menuBg {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    opacity: 0.55;
+  }
+  .menu-card {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 420px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+  }
+  .menu-logo {
+    font-size: 2.5rem;
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .menu-title {
+    font-size: 2.4rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .menu-tag {
+    color: var(--accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    margin: 6px 0 16px;
+  }
+  .menu-desc {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin: 0 0 24px;
+  }
+  .menu-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  button.big {
+    padding: 12px 20px;
+    font-size: 1rem;
+  }
+  .how-heading {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--accent);
+    text-align: left;
+    margin: 0 0 8px;
+  }
+  .how-rules {
+    text-align: left;
+    color: var(--muted);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding-left: 18px;
+    margin: 0 0 20px;
+  }
+  .how-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 24px;
+    display: grid;
+    gap: 8px;
+    text-align: left;
+  }
+  .how-list li {
+    display: flex;
+    gap: 10px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+  .how-list strong { color: var(--text); }
+  .how-emoji {
+    width: 1.4em;
+    flex-shrink: 0;
+    text-align: center;
+  }
+
+  /* ---------- game screen ---------- */
+  .game-header {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    width: 100%;
+    max-width: 560px;
+  }
+  .game-header button { justify-self: start; padding: 6px 12px; }
+  details.settings {
+    width: 100%;
+    max-width: 560px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 12px;
+  }
+  details.settings summary {
+    cursor: pointer;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  details.settings .row {
+    justify-content: space-between;
+    margin-top: 8px;
   }
   h1 {
     font-size: 1.1rem;
@@ -186,7 +315,41 @@
 </style>
 </head>
 <body>
-  <h1>⚡ Ball Battle: Wall Multiplier</h1>
+  <div id="menu" class="screen">
+    <canvas id="menuBg" aria-hidden="true"></canvas>
+
+    <div class="menu-card" id="menuMain">
+      <div class="menu-logo">⚡</div>
+      <h1 class="menu-title">Ball Battle</h1>
+      <p class="menu-tag">Wall Multiplier</p>
+      <p class="menu-desc">Every wall hit makes a ball faster and hit harder. Pick your fighters, give them powers, and watch the chaos. Last ball standing wins.</p>
+      <div class="menu-buttons">
+        <button class="primary big" id="playBtn">Play</button>
+        <button class="big" id="howBtn">How to Play</button>
+      </div>
+    </div>
+
+    <div class="menu-card" id="menuHow" hidden>
+      <h2 class="menu-title" style="font-size:1.6rem;margin-bottom:20px;">How to Play</h2>
+      <p class="how-heading">Rules</p>
+      <ul class="how-rules">
+        <li>Balls bounce around the arena on their own.</li>
+        <li>Each wall hit multiplies a ball's damage and boosts its speed.</li>
+        <li>When balls collide, each one deals its damage to the other.</li>
+        <li>The ring around a ball is its HP. Last ball alive wins.</li>
+        <li>Before starting, edit each ball's name, HP, damage and power.</li>
+      </ul>
+      <p class="how-heading">Powers</p>
+      <ul class="how-list" id="powerList"></ul>
+      <button class="primary big" id="howBackBtn" style="width:100%;">Back</button>
+    </div>
+  </div>
+
+  <div id="game" class="screen" hidden>
+  <div class="game-header">
+    <button id="menuBtn" title="Back to menu (Esc)">← Menu</button>
+    <h1>⚡ Ball Battle: Wall Multiplier</h1>
+  </div>
 
   <div id="arenaWrap">
     <canvas id="arena"></canvas>
@@ -208,22 +371,26 @@
     <span id="ballCountLabel">5</span>
   </div>
 
-  <div class="row">
-    <label for="speedMult">Speed gain per wall hit (%):</label>
-    <input type="number" id="speedMult" min="0" max="100" step="0.5" value="4.5" style="width:64px;">
-  </div>
+  <details class="settings">
+    <summary>Battle settings</summary>
+    <div class="row">
+      <label for="speedMult">Speed gain per wall hit (%):</label>
+      <input type="number" id="speedMult" min="0" max="100" step="0.5" value="4.5" style="width:64px;">
+    </div>
 
-  <div class="row">
-    <label for="damageMult">Damage multiplier per wall hit:</label>
-    <input type="number" id="damageMult" min="0" max="10" step="0.1" value="2" style="width:64px;">
-  </div>
+    <div class="row">
+      <label for="damageMult">Damage multiplier per wall hit:</label>
+      <input type="number" id="damageMult" min="0" max="10" step="0.1" value="2" style="width:64px;">
+    </div>
 
-  <div class="row">
-    <label for="damageAdd">Flat damage gain per wall hit:</label>
-    <input type="number" id="damageAdd" min="0" max="100000" step="1" value="0" style="width:64px;">
-  </div>
+    <div class="row">
+      <label for="damageAdd">Flat damage gain per wall hit:</label>
+      <input type="number" id="damageAdd" min="0" max="100000" step="1" value="0" style="width:64px;">
+    </div>
+  </details>
 
-  <p class="subtitle" style="font-size:0.75rem;">Edit names &amp; starting HP below before pressing Start.</p>
+  <p class="subtitle" style="font-size:0.75rem;">Edit names, HP, damage &amp; powers above before pressing Start.</p>
+  </div>
 
   <script>
   (function() {
@@ -244,30 +411,33 @@
     function resize() {
       DPR = window.devicePixelRatio || 1;
       const rect = wrap.getBoundingClientRect();
+      if (rect.width === 0) return; // game screen hidden (on the menu); keep the last size
       W = rect.width;
       H = rect.height;
       canvas.width = W * DPR;
       canvas.height = H * DPR;
       ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     }
-    window.addEventListener('resize', resize);
-
     const roster = document.getElementById('roster');
 
     const COLORS = ['#f87171', '#60a5fa', '#facc15', '#4ade80', '#c084fc', '#fb923c', '#22d3ee', '#f472b6', '#a3e635', '#94a3b8'];
     const NAMES = ['Rusty', 'Nova', 'Bolt', 'Zephyr', 'Ember', 'Onyx', 'Cosmo', 'Pixel', 'Flint', 'Vex'];
     const POWERS = {
       none:   { label: 'None',     emoji: '' },
-      fire:   { label: 'Fire',     emoji: '🔥' },
-      ice:    { label: 'Ice',      emoji: '❄️' },
-      shock:  { label: 'Shock',    emoji: '⚡' },
-      vamp:   { label: 'Vampire',  emoji: '🩸' },
-      rod:    { label: 'Rod',      emoji: '🌀' },
-      poison: { label: 'Poison',   emoji: '🧪' },
-      shield: { label: 'Shield',   emoji: '🛡️' },
-      blast:  { label: 'Blast',    emoji: '💥' },
-      regen:  { label: 'Regen',    emoji: '💚' }
+      fire:   { label: 'Fire',     emoji: '🔥', desc: 'Sets enemies on fire, dealing damage over time.' },
+      ice:    { label: 'Ice',      emoji: '❄️', desc: 'Slows enemies to 40% speed for 1.5 seconds.' },
+      shock:  { label: 'Shock',    emoji: '⚡', desc: 'Stuns enemies in place for half a second.' },
+      vamp:   { label: 'Vampire',  emoji: '🩸', desc: 'Heals for 30% of the damage it deals.' },
+      rod:    { label: 'Rod',      emoji: '🌀', desc: 'A spinning rod hits anything it touches. Grows longer and faster with every wall hit.' },
+      poison: { label: 'Poison',   emoji: '🧪', desc: 'Stacking poison that slowly drains enemy HP.' },
+      shield: { label: 'Shield',   emoji: '🛡️', desc: 'Blocks half the damage from a hit, then recharges for 2 seconds.' },
+      blast:  { label: 'Blast',    emoji: '💥', desc: 'Knocks enemies flying on impact.' },
+      regen:  { label: 'Regen',    emoji: '💚', desc: 'Slowly heals itself over time.' }
     };
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
     const POWER_KEYS_RANDOM = ['fire', 'ice', 'shock', 'vamp', 'rod', 'poison', 'shield', 'blast', 'regen']; // excludes 'none' for random assignment
 
     const ROD_BASE_LEN = 45;       // starting orbit radius
@@ -289,6 +459,7 @@
 
     let balls = [];
     let running = false;
+    let battleStarted = false; // false = setup (roster editable), true = battle underway or finished
     let animId = null;
 
     const INVULN_FRAMES = 24;      // ~0.4s at 60fps grace period after being hit
@@ -372,7 +543,10 @@
       balls = [];
       for (let i = 0; i < n; i++) balls.push(makeBall(i));
       running = false;
-      statusEl.innerHTML = 'Press Start to begin the battle';
+      battleStarted = false;
+      startBtn.textContent = 'Start';
+      statusEl.textContent = 'Press Start to begin the battle';
+      buildRoster();
       draw();
     }
 
@@ -383,11 +557,13 @@
 
     addBtn.addEventListener('click', () => {
       if (running) return;
+      if (battleStarted) initBalls(); // adding a ball starts a fresh setup
       if (balls.length >= 10) return;
       ensureConfigs(balls.length + 1);
       balls.push(makeBall(balls.length));
       ballCountSlider.value = balls.length;
       ballCountLabel.textContent = balls.length;
+      buildRoster();
       draw();
     });
 
@@ -581,7 +757,13 @@
           const dx = target.x - tipX, dy = target.y - tipY;
           const dist = Math.hypot(dx, dy);
           if (dist < target.r + ROD_TIP_R && target.rodImmune <= 0) {
-            target.hp -= owner.damage;
+            let rodDmg = owner.damage;
+            // shield blocks rod hits the same way it blocks collisions
+            if (target.power === 'shield' && target.shieldCooldown <= 0) {
+              rodDmg *= (1 - SHIELD_REDUCTION);
+              target.shieldCooldown = SHIELD_COOLDOWN;
+            }
+            target.hp -= rodDmg;
             target.rodImmune = ROD_HIT_COOLDOWN;
             // light knockback so targets don't just sit inside the spinning rod
             if (dist > 0) {
@@ -597,21 +779,26 @@
       if (stillAlive.length <= 1 && running) {
         running = false;
         if (stillAlive.length === 1) {
-          statusEl.innerHTML = `🏆 Winner: <strong style="color:${stillAlive[0].color}">${stillAlive[0].name}</strong> (final damage: ${Math.round(stillAlive[0].damage)})`;
+          statusEl.innerHTML = `🏆 Winner: <strong style="color:${stillAlive[0].color}">${escapeHtml(stillAlive[0].name)}</strong> (final damage: ${Math.round(stillAlive[0].damage)})`;
         } else {
           statusEl.textContent = 'Double knockout — no survivors!';
         }
-        startBtn.textContent = 'Start';
+        startBtn.textContent = 'New Battle';
       }
     }
 
-    function renderRoster() {
-      if (!running && balls.every(b => b.hp === b.maxHp)) {
+    // live-mode roster elements, so each frame only touches text that changed
+    let rosterEls = [];
+
+    // rebuilds the roster's HTML — only call when the ball list or setup/battle mode changes
+    function buildRoster() {
+      rosterEls = [];
+      if (!battleStarted) {
         // pre-battle: editable name + starting HP + power
         roster.innerHTML = balls.map((b, i) => `
           <div class="roster-item">
             <span class="roster-dot" style="background:${b.color}"></span>
-            <input type="text" maxlength="12" value="${b.name}" data-idx="${i}" data-field="name">
+            <input type="text" maxlength="12" value="${escapeHtml(b.name)}" data-idx="${i}" data-field="name">
             <input type="number" min="1" max="99999999" value="${Math.round(b.hp)}" data-idx="${i}" data-field="hp"> HP
             <input type="number" min="0" max="99999999" value="${Math.round(b.damage)}" data-idx="${i}" data-field="damage"> DMG
             <select data-idx="${i}" data-field="power">
@@ -642,20 +829,40 @@
               balls[idx].hp = val;
               balls[idx].maxHp = val;
             }
+            draw(); // show new power badge / damage label right away
           });
         });
       } else {
         // during/after battle: read-only live status
         roster.innerHTML = balls.map(b => `
-          <div class="roster-item${b.alive ? '' : ' dead'}">
+          <div class="roster-item">
             <span class="roster-dot" style="background:${b.color}"></span>
-            <span class="roster-name">${b.name}</span>
+            <span class="roster-name">${escapeHtml(b.name)}</span>
             <span class="power-badge">${POWERS[b.power]?.emoji || ''}</span>
-            <span class="roster-hp">${Math.max(0, Math.round(b.hp))} HP</span>
-            <span class="roster-hp">${Math.round(b.damage)} DMG</span>
+            <span class="roster-hp" data-stat="hp"></span>
+            <span class="roster-hp" data-stat="damage"></span>
           </div>
         `).join('');
+        rosterEls = [...roster.children].map(item => ({
+          item,
+          hp: item.querySelector('[data-stat="hp"]'),
+          damage: item.querySelector('[data-stat="damage"]')
+        }));
+        updateRoster();
       }
+    }
+
+    // cheap per-frame update of the live roster
+    function updateRoster() {
+      rosterEls.forEach((els, i) => {
+        const b = balls[i];
+        if (!b) return;
+        const hpText = `${Math.max(0, Math.round(b.hp))} HP`;
+        const dmgText = `${Math.round(b.damage)} DMG`;
+        if (els.hp.textContent !== hpText) els.hp.textContent = hpText;
+        if (els.damage.textContent !== dmgText) els.damage.textContent = dmgText;
+        els.item.classList.toggle('dead', !b.alive);
+      });
     }
 
     function draw() {
@@ -721,25 +928,35 @@
           ctx.fillText(statusEmoji, b.x, b.y + b.r + 12);
         }
       }
-      renderRoster();
     }
 
     function loop() {
       if (running) {
         step();
         draw();
+        updateRoster();
         animId = requestAnimationFrame(loop);
       }
     }
 
+    function pauseBattle() {
+      if (!running) return;
+      running = false;
+      cancelAnimationFrame(animId);
+      startBtn.textContent = 'Resume';
+      statusEl.textContent = 'Paused. Press Resume to continue.';
+    }
+
     startBtn.addEventListener('click', () => {
       if (running) {
-        running = false;
-        startBtn.textContent = 'Start';
-        cancelAnimationFrame(animId);
+        pauseBattle();
       } else {
         const alive = balls.filter(b => b.alive);
         if (alive.length <= 1) initBalls();
+        if (!battleStarted) {
+          battleStarted = true;
+          buildRoster(); // switch roster from editable to live
+        }
         running = true;
         startBtn.textContent = 'Pause';
         statusEl.textContent = 'Battle in progress…';
@@ -750,14 +967,122 @@
     resetBtn.addEventListener('click', () => {
       running = false;
       cancelAnimationFrame(animId);
-      startBtn.textContent = 'Start';
       initBalls();
     });
 
-    // init
-    resize();
-    initBalls();
-    window.addEventListener('resize', () => { resize(); draw(); });
+    // ---------- main menu ----------
+    const menuScreen = document.getElementById('menu');
+    const gameScreen = document.getElementById('game');
+    const menuMain = document.getElementById('menuMain');
+    const menuHow = document.getElementById('menuHow');
+    const menuBg = document.getElementById('menuBg');
+    const menuCtx = menuBg.getContext('2d');
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let gameInitialized = false;
+
+    document.getElementById('powerList').innerHTML = Object.values(POWERS)
+      .filter(p => p.desc)
+      .map(p => `<li><span class="how-emoji">${p.emoji}</span><span><strong>${p.label}:</strong> ${p.desc}</span></li>`)
+      .join('');
+
+    // decorative bouncing balls behind the menu
+    let menuBalls = [];
+    let menuAnimId = null;
+    let menuBallsW = 0; // window width when the menu balls were spawned
+    function sizeMenuBg() {
+      const dpr = window.devicePixelRatio || 1;
+      menuBg.width = window.innerWidth * dpr;
+      menuBg.height = window.innerHeight * dpr;
+      menuCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      // respawn if the balls were placed while the window had no real size yet
+      if (menuBallsW < 200 && window.innerWidth >= 200) initMenuBalls();
+    }
+    function initMenuBalls() {
+      const w = window.innerWidth, h = window.innerHeight;
+      menuBallsW = w;
+      menuBalls = COLORS.slice(0, 8).map(color => {
+        const r = 14 + Math.random() * 22;
+        return {
+          x: r + Math.random() * (w - 2 * r),
+          y: r + Math.random() * (h - 2 * r),
+          vx: (Math.random() - 0.5) * 3,
+          vy: (Math.random() - 0.5) * 3,
+          r, color
+        };
+      });
+    }
+    function drawMenuBg() {
+      const w = window.innerWidth, h = window.innerHeight;
+      menuCtx.clearRect(0, 0, w, h);
+      for (const b of menuBalls) {
+        if (!reduceMotion) {
+          b.x += b.vx; b.y += b.vy;
+          if (b.x - b.r < 0 || b.x + b.r > w) { b.vx *= -1; b.x = Math.min(Math.max(b.x, b.r), w - b.r); }
+          if (b.y - b.r < 0 || b.y + b.r > h) { b.vy *= -1; b.y = Math.min(Math.max(b.y, b.r), h - b.r); }
+        }
+        menuCtx.beginPath();
+        menuCtx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+        menuCtx.fillStyle = b.color;
+        menuCtx.fill();
+      }
+    }
+    function menuLoop() {
+      drawMenuBg();
+      if (!reduceMotion) menuAnimId = requestAnimationFrame(menuLoop);
+    }
+
+    function showMenu() {
+      pauseBattle();
+      gameScreen.hidden = true;
+      menuScreen.hidden = false;
+      menuMain.hidden = false;
+      menuHow.hidden = true;
+      sizeMenuBg();
+      cancelAnimationFrame(menuAnimId);
+      menuLoop();
+    }
+
+    function showGame() {
+      cancelAnimationFrame(menuAnimId);
+      menuScreen.hidden = true;
+      gameScreen.hidden = false;
+      resize(); // arena has real dimensions only once visible
+      if (!gameInitialized) {
+        gameInitialized = true;
+        initBalls();
+      } else {
+        draw();
+      }
+    }
+
+    document.getElementById('playBtn').addEventListener('click', showGame);
+    document.getElementById('menuBtn').addEventListener('click', showMenu);
+    document.getElementById('howBtn').addEventListener('click', () => {
+      menuMain.hidden = true;
+      menuHow.hidden = false;
+    });
+    document.getElementById('howBackBtn').addEventListener('click', () => {
+      menuHow.hidden = true;
+      menuMain.hidden = false;
+    });
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && !gameScreen.hidden) showMenu();
+    });
+
+    window.addEventListener('resize', () => {
+      if (!gameScreen.hidden) {
+        resize();
+        draw();
+      } else {
+        sizeMenuBg();
+        if (reduceMotion) drawMenuBg();
+      }
+    });
+
+    // init: start on the main menu
+    initMenuBalls();
+    sizeMenuBg();
+    menuLoop();
   })();
   </script>
 </body>
